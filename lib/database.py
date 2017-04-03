@@ -4,11 +4,11 @@ import sqlite3 as lite
 from itertools import repeat
 
 # relationalizes a sparse term-document matrix
-# from (row_id, doc_id, value)-tuples
+# as (row_id, doc_id, value)-tuples
 class DataBase:
 
-    # create table for the term-document index
-    # as (doc_id, term_id, score)-rows
+    # create databse with table for the term-document index
+    # or connect to existing one
     def __init__(self, database_file, existing = False):
         db_exists = os.path.isfile(database_file)
         if db_exists and not existing:
@@ -31,7 +31,7 @@ class DataBase:
             self.connection.commit()
 
     # insert document with its corresponding terms/scores
-    # into forward index
+    # into index table
     def insert_document(self, document_id, term_scores):
         self.cursor.executemany(
             '''
@@ -39,7 +39,7 @@ class DataBase:
             VALUES({},?,?)
             '''.format(document_id),list(term_scores))
 
-    # retrieve postings list for term from inverted index
+    # retrieve postings list for term
     def retrieve_term(self, term_id):
         document_ids = self.cursor.execute(
             '''
@@ -48,8 +48,7 @@ class DataBase:
             ''',(term_id,)).fetchall()
         return [document_id[0] for document_id in document_ids]
 
-    # retrieve bag-of-terms scores for document
-    # from forward index
+    # retrieve term with scores for document
     def retrieve_document(self, document_id):
         terms_scores = self.cursor.execute(
             '''
@@ -58,7 +57,7 @@ class DataBase:
             ''',(document_id,)).fetchall()
         return terms_scores
 
-    # remove list of terms from both indices
+    # remove list of terms from table
     def remove_terms(self, term_ids):
         self.cursor.executemany(
             '''
@@ -67,9 +66,7 @@ class DataBase:
             ''', term_ids)
         self.connection.commit()
 
-    # change term scores for a given document
-    # input is a list of
-    # (score, document_id, term_id)-tuples
+    # change term scores of a given document
     def update_documents(self, score_tuples):
         self.cursor.executemany(
             '''

@@ -2,39 +2,27 @@
 import json
 import os
 import sys
-import argparse
-import warnings
-import pandas as pd
+import spacy
+from pandas import period_range
 from multiprocessing import Pool
 from urllib.request import FancyURLopener
+from lib.utils import recursive_walk, check_directory
+
 urlretrieve = FancyURLopener().retrieve
-warnings.formatwarning = lambda message, category, *args, **kwargs: "{}: {}\n".format(category.__name__, str(message))
 
 
 # data will be downloaded from http://files.pushshift.io/reddit/comments/
-# documentation of data structure https://github.com/reddit/reddit/wiki/JSON
+# data structure is document in https://github.com/reddit/reddit/wiki/JSON
 
 
 class RedditDownloader():
 
     def __init__(self, start, end, directory, report_progress, keep_compressed):
-        self.directory = directory
+        self.directory = check_directory(directory)
         self.report_progress = report_progress
         self.keep_compressed = keep_compressed
-        self.months = pd.period_range(start, end, freq = "M")
-        self.check_directory()
+        self.months = period_range(start, end, freq = "M")
 
-    # create directory, unless it exists and isn't a file
-    # issue a warning, in case directory contains files
-    # (as they will be processed later)
-    def check_directory(self):
-        try:
-            os.makedirs(self.directory)
-        except OSError as e:
-            if not os.path.isdir(self.directory):
-                raise e
-            elif os.listdir(self.directory):
-                warnings.warn("Directory ({}) already contains files.".format(self.directory))
 
     # decompress bz2 file (compressed_path) incrementally
     def decompress(self, compressed_path, decompressed_path):
@@ -106,14 +94,15 @@ class RedditDownloader():
         else:
             self.report_progress = False
             with Pool(num_cores) as pool:
-                for _ in pool.imap_unordered(func, self.months):
+                for _ in pool.imap_unordered(self.process_month, self.months):
                     pass
 
 
-# takes a directory with reddit comment archive files
+# takes a directory with reddit comment archive files (JSON)
 # and returns the comment id and a list of tokens for each comment
-def DocumentGenerator(nlp, directory, lemmatize = False):
+def DocumentGenerator(irectory, lemmatize = False):
     files = recursive_walk(directory)
+    nlp = spacy.load("en")
     for month in files:
         month = open(month, "r")
         for comment in month:
@@ -126,14 +115,3 @@ def DocumentGenerator(nlp, directory, lemmatize = False):
             else:
                 tokens = [token.string.lower() for token in tokens if not token.pos_.startswith(u"PU")]
             yield comment_id, tokens
-
-
-# generator for traversing nested directory
-# returns paths to all files contained
-def recursive_walk(directory):
-    for folderName, subFolders, fileNames in os.walk(directory):
-        if subFolders:
-            for subFolder in subFolders:
-                recursive_walk(os.path.join(folderName, subFolder))
-        for fileName in fileNames:
-            yield os.path.join(folderName, fileName)

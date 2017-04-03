@@ -1,36 +1,17 @@
 #!/usr/bin/python3
-import os
-import json
-from math import log2, sqrt
+from math import log2
 from heapq import nlargest
-from itertools import count
 from collections import Counter
+from lib.utils import Numberer, l2_norm
 from lib.database import DataBase
 
 
-# assigns ascending number to each individual input
-class Numberer:
-
-    def __init__(self, start = 0):
-        self.known = dict()
-        self.num_keys = start
-
-    # get/set number for term
-    def get(self, key):
-        try:
-            return self.known[key]
-        except KeyError:
-            self.num_keys += 1
-            self.known[key] = self.num_keys
-            return self.num_keys
-
-    # remove known terms by value
-    def remove_values(self, values):
-        for key in list(self.known.keys()):
-            if self.known[key] in values:
-                del self.known[key]
-
-
+# takes an iterator with (doc_id, term_list)-tuples, creates:
+# an in-memory dictionary from terms to term_ids
+# an on-disk index
+# an in-memory dictionary from doc ids to document names (reddit comment ids)
+# an in-memory dictionary with document frequencies (i.e. the number of documents each term appears in)
+# returns list of term_ids below frequency threshold
 class InvertedIndex:
 
     def __init__(self, database, documents, frequency_threshold):
@@ -44,13 +25,8 @@ class InvertedIndex:
         self.remove_infrequent(infrequent)
         self.transform_to_tfidf()
 
-
-    # takes an iterator with (doc_id, term_list)-tuples, creates:
-    # an in-memory dictionary from terms to term_ids
-    # an on-disk index
-    # an in-memory dictionary from doc ids to document names (reddit comment ids)
-    # an in-memory dictionary with document frequencies (i.e. the number of documents each term appears in)
-    # returns list of term_ids below frequency threshold
+    # insert documents into database
+    # return list of infrequent terms
     def make_indices(self, documents, frequency_threshold):
         vocabulary = Counter()
         self.prepare_inserts()
@@ -60,9 +36,8 @@ class InvertedIndex:
         return infrequent
 
 
-    # takes a document and the vocabulary seen so far
-    # processes the document, adds it to the database
-    # and updates the vocabulary, document_ids and
+    # processes document
+    # update the vocabulary, document_ids and
     # document_frequencies
     def process_document(self, document, vocabulary):
         doc_id = document[0]
@@ -83,17 +58,14 @@ class InvertedIndex:
         self.vocabulary_indices.remove_values(set(infrequent))
 
 
-    # turns frequency counts in index into pmi values
-    # temporarily creates reverse term_id dictionary
-    # (will take a lot of memory if frequency threshold for vocabulary
-    # is set very low and number of documents high)
+    # turn frequency counts in index into pmi values
     def transform_to_tfidf(self):
         self.prepare_updates()
         updates = list()
         for i, document_id in enumerate(self.document_ids):
             frequencies = self.get_document(document_id)
             tfidfs = [(term_id, self.tfidf(term_id, frequency)) for term_id, frequency in frequencies]
-            norm = InvertedIndex.l2_norm([tfidf for _, tfidf in tfidfs])
+            norm = l2_norm([tfidf for _, tfidf in tfidfs])
             normed = [(tfidf/norm, document_id, term_id) for term_id, tfidf in tfidfs]
             updates += normed
             if i%10000 == 0:
@@ -102,25 +74,18 @@ class InvertedIndex:
         if updates:
             self.update_documents(updates)
 
-    # takes term_id and its frequency and returns
-    # pmi value
+    # calculate tfidf from term_id and frequency count
     def tfidf(self, term_id, frequency):
         return frequency * self.idf(term_id)
 
-    # returns idf score for a given term_id
+    # calculate idf for term_id
     def idf(self, term_id):
         idf = log2(self.num_documents / max(self.document_frequencies[term_id],1))
         return idf
 
-    # turns document id into name of document
+    # get document name associated with term_id
     def get_document_name(self, doc_id):
         return self.document_ids[doc_id]
-
-    # calculats l2 norm over a vector
-    @staticmethod
-    def l2_norm(values):
-        l2_norm = sqrt(sum([value**2 for value in values]))
-        return l2_norm
 
     # return term_id for given term
     def get_term_id(self, term):
@@ -196,15 +161,9 @@ class QueryProcessor():
     # turn query into vector of normed tf-ids scores
     def query_to_tfidf(self, query):
         query = [(term_id, self.tfidf(term_id, 1)) for term_id in query]
-        l2_norm = QueryProcessor.l2_norm([tfidf for _, tfidf in query])
-        query = [(term_id, tf_idf/l2_norm) for term_id, tf_idf in query]
+        norm = l2_norm([tfidf for _, tfidf in query])
+        query = [(term_id, tf_idf/norm) for term_id, tf_idf in query]
         return query
-
-    # calculats l2 norm over a vector
-    @staticmethod
-    def l2_norm(values):
-        l2_norm = sqrt(sum([value**2 for value in values]))
-        return l2_norm
 
 
     # interfaces to communicate with inverted_index
