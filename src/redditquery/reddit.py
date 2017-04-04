@@ -6,7 +6,7 @@ import spacy
 from pandas import period_range
 from multiprocessing import Pool
 from urllib.request import FancyURLopener
-from redditQuery.utils import recursive_walk, check_directory
+from redditquery.utils import recursive_walk, check_directory
 
 urlretrieve = FancyURLopener().retrieve
 

@@ -3,8 +3,8 @@ import sys
 from math import log2
 from heapq import nlargest
 from collections import Counter
-from redditQuery.utils import Numberer, l2_norm
-from redditQuery.database import DataBase
+from redditquery.utils import Numberer, l2_norm
+from redditquery.database import DataBase
 
 
 # takes an iterator with (doc_id, term_list)-tuples, creates:

@@ -2,10 +2,10 @@
 import os
 import sys
 import pickle
-from redditQuery.database import DataBase
-from redditQuery.parse import Parser
-from redditQuery.index import InvertedIndex, QueryProcessor
-from redditQuery.reddit import RedditDownloader, DocumentGenerator
+from redditquery.database import DataBase
+from redditquery.parse import Parser
+from redditquery.index import InvertedIndex, QueryProcessor
+from redditquery.reddit import RedditDownloader, DocumentGenerator
 
 
 # obligatory parameters:

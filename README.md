@@ -1,4 +1,4 @@
-# RedditQuery
+# redditquery
 
 An offline information retrieval system for full-text search on reddit comments.
 
@@ -8,7 +8,7 @@ An offline information retrieval system for full-text search on reddit comments.
 To get started, install the dependencies (see Prerequisites) and then clone the repository to your local machine. Once set-up, you can call the package from the command line like so (see Parameters):
 
 ```
-redditQuery [-h] [-f FIRST] [-l LAST] [--dir [DIR]] [--num [NUM]]
+redditquery [-h] [-f FIRST] [-l LAST] [--dir [DIR]] [--num [NUM]]
                    [--cores [CORES]] [--minfreq [MINFREQ]] [--progress]
                    mode
 ```
@@ -18,7 +18,7 @@ Alterantively, you can use it from inside python to interact with it dynamically
 
 ## Parameters
 
-redditQuery's behaviour can be changed with various parameters. Specifying mode is obligatory:
+redditquery's behaviour can be changed with various parameters. Specifying mode is obligatory:
 
 ```
 mode:  1 Build Inverted Index (requires specifying -f and -l)
@@ -50,13 +50,13 @@ All other parameters are optional, here is what they do and their defaults:
 Build inverted index from reddit comments between december 2005 and march 2006 from the command line:
 
 ```
-user@host:~ redditQuery 1 -f 2005/12 -l 2006/03
+user@host:~ redditquery 1 -f 2005/12 -l 2006/03
 ```
 
 Query inverted index that already exists in myDirectory with queries from myQueries.txt in the same directory:
 
 ```
-user@host:~ redditQuery 2 -d path/to/myDirectory path/to/myDirectory/myQueries.txt
+user@host:~ redditquery 2 -d path/to/myDirectory path/to/myDirectory/myQueries.txt
 ```
 
 Build and query the same index as above in one go from inside python:
@@ -65,10 +65,10 @@ Build and query the same index as above in one go from inside python:
 >>> import os
 >>> import sys
 >>> import pickle
->>> from redditQuery.database import DataBase
->>> from redditQuery.parse import Parser
->>> from redditQuery.index import InvertedIndex, QueryProcessor
->>> from redditQuery.reddit import RedditDownloader, DocumentGenerator
+>>> from redditquery.database import DataBase
+>>> from redditquery.parse import Parser
+>>> from redditquery.index import InvertedIndex, QueryProcessor
+>>> from redditquery.reddit import RedditDownloader, DocumentGenerator
 
 >>> directory = "myDirectory"
 >>> queries = "myDirectory/myQueries.txt"
@@ -92,7 +92,7 @@ Build and query the same index as above in one go from inside python:
 
 ### Prerequisites
 
-RedditQuery has two dependencies that are not part of the standard distribution, Pandas and Spacy. If you install this package using pip, the dependencies should be installed automatically. On Unix systems, you should also be able to install them separately using pip3:
+redditquery has two dependencies that are not part of the standard distribution, Pandas and Spacy. If you install this package using pip, the dependencies should be installed automatically. On Unix systems, you should also be able to install them separately using pip3:
 
 ```
 pip3 install pandas
@@ -104,13 +104,13 @@ An alternative, especially for Windows users, is to use a conda distribution tha
 ```
 source activate <your_virtual_environment_name>
 conda install spacy
-pip3 install redditQuery
+pip3 install redditquery
 ```
 
 Lastly, you can clone the repository and use the setup.py to install the package manually:
 
 ```
-git clone git@github.com:kuchenrolle/RedditQuery.git
+git clone git@github.com:kuchenrolle/redditquery.git
 python setup.py install
 ```
 
@@ -123,13 +123,13 @@ If you encounter any problems installing the dependencies, please consult the in
 This package is pip-installable:
 
 ```
-pip3 install redditQuery
+pip3 install redditquery
 ```
 
 If you're using conda, then first activate the target environment as above and then install. Alternatively, clone this repository to your local directory and install manually:
 
 ```
-git clone git@github.com:kuchenrolle/RedditQuery.git <path_to_destination_folder>
+git clone git@github.com:kuchenrolle/redditquery.git <path_to_destination_folder>
 python setup.py install
 ```
 
