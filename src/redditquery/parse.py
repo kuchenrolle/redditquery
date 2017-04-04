@@ -4,7 +4,7 @@ import argparse
 
 
 def parser():
-    """Parses arguments from comman line using argparse.
+    """Parses arguments from command line using argparse.
     Parameters"""
     # default directory for reddit files
     default_directory = os.path.join(os.getcwd(), "data")
