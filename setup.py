@@ -12,14 +12,14 @@ from setuptools import setup
 
 
 setup(
-    name = 'redditQuery',
+    name = 'redditquery',
     version = '0.1.0',
     license = 'MIT',
     description = 'An offline information retrieval system for full-text search on reddit comments.',
     long_description = open('README.md').read(),
     author = 'Christian Adam',
     author_email = 'kuchenrolle@googlemail.com',
-    url='https://github.com/kuchenrolle/RedditQuery',
+    url='https://github.com/kuchenrolle/redditquery',
     packages = find_packages('src'),
     package_dir = {'': 'src'},
     py_modules = [splitext(basename(path))[0] for path in glob('src/*.py')],
@@ -63,7 +63,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'redditQuery = redditQuery.__main__:main',
+            'redditquery = redditquery.__main__:main',
         ]
     },
 )
