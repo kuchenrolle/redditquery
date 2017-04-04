@@ -13,8 +13,8 @@ def parser():
     # obligatory
     parser.add_argument("mode", type = int, help = "execution mode: 1 build index, 2: query using existing index, 3 build and query")
     # conditionally obligatory
-    parser.add_argument("-f", "--first", type = str, help = "first year/month")
-    parser.add_argument("-l", "--last", type = str, help = "last year/month")
+    parser.add_argument("--first", "-f", type = str, help = "first year/month")
+    parser.add_argument("--last", "-l", type = str, help = "last year/month")
     # optional with defaults
     parser.add_argument("--dir", "-d", type = str, nargs = "?", default = default_directory, help = "directory for data storage")
     parser.add_argument("--num", "-n", type = int, nargs = "?", default = 10, help = "number of results per query")
