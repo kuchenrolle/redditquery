@@ -16,16 +16,37 @@ urlretrieve = FancyURLopener().retrieve
 
 
 class RedditDownloader():
+    """ Downloads and Decompresses reddit comment archive files.
+    Parameters
+    ----------
+    start :             str
+                        First month to be processed as YYYY/MM
+    last :              str
+                        Last month to be processed as YYYY/MM
+    directory :         str
+                        Directory to store data in
+    report_progress :   Boolean
+                        Display progress report to stderr
+    keep_compressed :   Boolean
+                        Keep compressed archive files
+    """
 
-    def __init__(self, start, end, directory, report_progress, keep_compressed):
+    def __init__(self, start, last, directory, report_progress, keep_compressed):
         self.directory = check_directory(directory)
         self.report_progress = report_progress
         self.keep_compressed = keep_compressed
-        self.months = period_range(start, end, freq = "M")
+        self.months = period_range(start, last, freq = "M")
 
 
-    # decompress bz2 file (compressed_path) incrementally
     def decompress(self, compressed_path, decompressed_path):
+        """Decompress bz2 file (compressed_path) incrementally.
+        Parameters
+        ----------
+        compressed_path :   str or path object
+                            file to be decompressed
+        decompressed_path : str or path object
+                            file to be decompressed into
+        """
         from bz2 import BZ2Decompressor
         with open(decompressed_path, 'wb') as decompressed, open(compressed_path, 'rb') as compressed:
             decompressor = BZ2Decompressor()
@@ -44,14 +65,19 @@ class RedditDownloader():
             os.remove(compressed_path)
 
     @staticmethod
-    # hook to update download progress
     def download_progress(count, block_size, total_size):
+        """Hook to update download progress."""
         percentage = min(int(100 * count * block_size / total_size),100)
         sys.stderr.write("\rDownload: {}%".format(percentage))
         sys.stderr.flush()
 
-    # download data for given month and year
     def download_month(self, month):
+        """Download data for given month.
+        Parameters
+        ----------
+        month : str or date object
+                Month to be downloaded, str(month) must result in YYYY/MM
+        """
         file_url = "http://files.pushshift.io/reddit/comments/RC_{}.bz2".format(month)
         file_path = os.path.join(self.directory, "RC_{}.bz2".format(month))
         if self.report_progress:
@@ -59,36 +85,51 @@ class RedditDownloader():
         else:
             urlretrieve(file_url, file_path)
 
-    # download all files
     def download_all(self):
+        """Downloads data for all months in self.months"""
         for month in self.months:
             if self.report_progress:
                 sys.stderr.write("\n")
             self.download_month(month)
 
-    # decompress file associated with specific month
     def decompress_month(self, month):
-            compressed_path = os.path.join(self.directory, "RC_{}.bz2".format(month))
-            decompressed_path = os.path.join(self.directory, "RC_{}.json".format(month))
-            self.decompress(compressed_path = compressed_path, decompressed_path = decompressed_path)
+        """Decompress archive file for given month.
+        Parameters
+        ----------
+        month : str or date object
+                Month to be decompressed, str(month) must result in YYYY/MM
+        """
+        compressed_path = os.path.join(self.directory, "RC_{}.bz2".format(month))
+        decompressed_path = os.path.join(self.directory, "RC_{}.json".format(month))
+        self.decompress(compressed_path = compressed_path, decompressed_path = decompressed_path)
 
-    # decompress files for all months
     def decompress_all(self):
+        """Decompress files for all months."""
         for month in self.months:
             self.decompress_month(month)
 
-    # download file for specific month and decompress
     def process_month(self, month):
+        """Download file for specific month and decompress.
+        Parameters
+        ----------
+        month : str or date object
+                Month to be processed, str(month) must result in YYYY/MM
+        """
         self.download_month(month)
         self.decompress_month(month)
 
-    # download and decompress files for all momths
     def process_all(self):
+        """Download and decompress files for all months."""
         for month in self.months:
             self.process_month(month)
 
-    # download and decompress files for all months in parallel
     def process_all_parallel(self, num_cores):
+        """Download and decompress files for all months in parallel
+        Parameters
+        ----------
+        num_cores : int
+                    Number of cores to use
+        """
         if num_cores == 1:
             self.process_all()
         else:
@@ -98,9 +139,17 @@ class RedditDownloader():
                     pass
 
 
-# takes a directory with reddit comment archive files (JSON)
-# and returns the comment id and a list of tokens for each comment
 def DocumentGenerator(directory, lemmatize = False):
+    """
+    Takes a directory with reddit comment archive files (JSON)
+    and returns tuples of the comment id and a list of tokens for each comment.
+    Parameters
+    ----------
+    directory : str or path object
+                Directory with comment files
+    lemmatize : Boolean, optional
+                lemmatize tokens in comments
+    """
     files = recursive_walk(directory)
     nlp = spacy.load("en")
     for month in files:

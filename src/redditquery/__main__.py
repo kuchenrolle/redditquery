@@ -3,32 +3,14 @@ import os
 import sys
 import pickle
 from redditquery.database import DataBase
-from redditquery.parse import Parser
+from redditquery.parse import parser
 from redditquery.index import InvertedIndex, QueryProcessor
 from redditquery.reddit import RedditDownloader, DocumentGenerator
 
 
-# obligatory parameters:
-# mode:     1 build index
-#           2 query existing index
-#           3 build and run
-
-# conditionally obligatory parameters:
-# if mode is 1 or 3:
-# -f or --first YYYY/MM: first month to be processed
-# -l or --last YYYY/MM:  last month to be processed
-
-# optional parameters with defaults:
-# -d or --dir:      directory path to store data in (defaults to working dir)
-# -c or --cores:    number of cores to use for downloading/decompressing monthly data (defaults to single-core)
-# -m or --minfreq:  minimum frequeny to keep terms in index (defaults to 5)
-# -n or --num:      number of results to show for each query (defaults to 10)
-# -p or --progress: output progress information for download/processing (only single core, defaults to no progress shown)
-
-
 def main():
-    # parse arguments from shell
-    parser = Parser(base_directory = os.getcwd())
+    """Build and/or Query Inverted Index from reddit comments."""
+    parser = parser()
     args = parser.parse_args()
 
     if args.mode in (1,3):
@@ -38,7 +20,7 @@ def main():
             raise ValueError("first and last month must be specified when building index.")
 
         # download data and decompress
-        downloader = RedditDownloader(start = args.first, end = args.last, directory = os.path.join(args.dir, "monthly_data"), report_progress = args.progress, keep_compressed = False)
+        downloader = RedditDownloader(start = args.first, last = args.last, directory = os.path.join(args.dir, "monthly_data"), report_progress = args.progress, keep_compressed = False)
         downloader.process_all_parallel(num_cores = args.cores)
 
         # make document generator

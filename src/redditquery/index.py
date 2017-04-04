@@ -7,14 +7,18 @@ from redditquery.utils import Numberer, l2_norm
 from redditquery.database import DataBase
 
 
-# takes an iterator with (doc_id, term_list)-tuples, creates:
-# an in-memory dictionary from terms to term_ids
-# an on-disk index
-# an in-memory dictionary from doc ids to document names (reddit comment ids)
-# an in-memory dictionary with document frequencies (i.e. the number of documents each term appears in)
-# returns list of term_ids below frequency threshold
 class InvertedIndex:
-
+    """
+    Creates an InvertedIndex stored in a database.
+    Parameters
+    ----------
+    database :              database object
+                            Database to use
+    documents :             iterable of tuples of int, list of strings
+                            Documents to insert into index
+    frequency_threshold :   int
+                            Minimum frequency for terms to be in index
+    """
     def __init__(self, database, documents, frequency_threshold):
         self.num_documents = 0
         self.database = database
@@ -26,9 +30,16 @@ class InvertedIndex:
         self.remove_infrequent(infrequent)
         self.transform_to_tfidf()
 
-    # insert documents into database
-    # return list of infrequent terms
     def make_indices(self, documents, frequency_threshold):
+        """Insert documents into index.
+        Parameters
+        ----------
+        documents :             iterable of tuples of int, list of strings
+                                Documents to insert into index
+        frequency_threshold :   int
+                                Minimum frequency for terms to be in index
+
+        """
         vocabulary = Counter()
         self.prepare_inserts()
         for document in documents:
@@ -37,10 +48,15 @@ class InvertedIndex:
         return infrequent
 
 
-    # processes document
-    # update the vocabulary, document_ids and
-    # document_frequencies
     def process_document(self, document, vocabulary):
+        """Add document to index.
+        Parameters
+        ----------
+        document :      tuple of int, list of strings
+                        Document to be processed.
+        vocabulary :    Counter
+                        Vocabulary counter to filter out words at the end
+        """
         doc_id = document[0]
         document = [self.vocabulary_indices.get(term) for term in document[1]]
         term_counts = Counter(document)
@@ -51,16 +67,20 @@ class InvertedIndex:
         self.document_ids[self.num_documents] = doc_id
         self.num_documents += 1
 
-    # remove infrequent terms from database
-    # and from vocabulary indices
     def remove_infrequent(self, infrequent):
+        """Remove infrequent terms from index.
+        Parameters
+        ----------
+        infrequent :    list of int
+                        ids of terms to be removed
+        """
         self.prepare_deletes()
         self.remove_terms([(term,) for term in infrequent])
         self.vocabulary_indices.remove_values(set(infrequent))
 
 
-    # turn frequency counts in index into pmi values
     def transform_to_tfidf(self):
+    """Turn frequency counts in index into pmi values."""
         self.prepare_updates()
         updates = list()
         for i, document_id in enumerate(self.document_ids):
@@ -75,63 +95,127 @@ class InvertedIndex:
         if updates:
             self.update_documents(updates)
 
-    # calculate tfidf from term_id and frequency count
     def tfidf(self, term_id, frequency):
+        """Calculate tf-idf.
+        Parameters
+        ----------
+        term_id :   int
+                    id of term
+        frequency : int
+                    Frequency of term"""
         return frequency * self.idf(term_id)
 
-    # calculate idf for term_id
     def idf(self, term_id):
+        """Calculate idf.
+        Parameters
+        ----------
+        term_id :   int
+                    id of term
+        """
         idf = log2(self.num_documents / max(self.document_frequencies[term_id],1))
         return idf
 
-    # get document name associated with term_id
     def get_document_name(self, doc_id):
+        """get document name associated with doc id.
+        Parameters
+        ----------
+        doc_id :    int
+                    id of document
+        """
         return self.document_ids[doc_id]
 
-    # return term_id for given term
     def get_term_id(self, term):
+        """Return term_id for given term.
+        Parameters
+        ----------
+        term :  str
+                term to get id for
+        """
         return self.vocabulary_indices.get(term)
 
 
     # interfaces for database
-    # retrieves document_ids a given term_id appeared in
     def get_postings_list(self, term_id):
+        """Retrieve ids of documents that a given term_id appeared in.
+        Parameters
+        ----------
+        term_id :   int
+                    id of term
+        """
         return self.database.retrieve_term(term_id)
 
-    # retrieves document from database by id
     def get_document(self, document_id):
+        """Retrieve document from database by id.
+        Parameters
+        ----------
+        doc_id :    int
+                    id of document
+        """
         return self.database.retrieve_document(document_id)
 
-    # insert document into database
     def insert_document(self, doc_id, scores):
+        """Insert document with its corresponding terms/scores
+            into database.
+        Parameters
+        ----------
+        document_id :   int
+                        id of the document
+        term_scores :   iterable of tuples of int, float
+                        term ids and term scores
+        """
         self.database.insert_document(doc_id, scores)
 
-    # remove list of terms from database
     def remove_terms(self, infrequent):
+        """Remove list of terms from database
+        Parameters
+        ----------
+        term_ids :  iterable of singleton tuples of int
+                    term ids to be removed
+        """
         self.database.remove_terms(infrequent)
 
     def update_documents(self, updates):
+        """Change term scores of a given document
+        Parameters
+        ----------
+        score_tuples :  iterable of tuples of float, int, int
+                        scores for document ids and term ids to be updated
+        """
         self.database.update_documents(updates)
 
-    # prepare database for insertions
     def prepare_inserts(self):
+        """Prepare database for insertions"""
         self.database.prepare_inserts()
 
-    # prepare database for deletions
     def prepare_deletes(self):
+        """Prepare database for deletions"""
         self.database.prepare_deletes()
 
-    # prepare database for updates
     def prepare_updates(self):
+        """Prepare database for updates"""
         self.database.prepare_updates()
 
 
 class QueryProcessor():
+    """Queries an inverted index.
+    Parameters
+    ----------
+    inverted_index :    InvertedIndex
+                        Index to be queried
+    """
 
     def __init__(self, inverted_index):
         self.inverted_index = inverted_index
 
     def query_index(self, query, num_results):
+        """Query the index.
+        Parameters
+        ----------
+        query :         str
+                        Query to be processed
+        num_results :   int
+                        Number of most similar results to return
+        """
         # ignore multiple occurrences of terms in query
         query = list(set(query.strip().split(" ")))
         term_ids = [self.get_term_id(term) for term in query]
@@ -150,8 +234,15 @@ class QueryProcessor():
             doc_name = self.get_document_name(doc_id)
             sys.stdout.write("{0} ({1:3f}): {2}".format(doc_id, similarity, doc_name))
 
-    # return cosine similarity between doc_id and query (term ids)
     def get_similarity(self, candidate, query):
+        """Return cosine similarity between candidate and query
+        Parameters
+        ----------
+        candidate : int
+                    id of candidate document
+        query :     iterable of int
+                    ids of terms in the query
+        """
         query = self.query_to_tfidf(query)
         candidate = dict(self.get_document(candidate))
         cosine = 0
@@ -159,8 +250,13 @@ class QueryProcessor():
             cosine += tf_idf * candidate.setdefault(term_id, 0)
         return cosine
 
-    # turn query into vector of normed tf-ids scores
     def query_to_tfidf(self, query):
+        """Turn query into vector of normed tf-ids scores
+        Parameters
+        ----------
+        query : iterable of int
+                ids of terms in the query
+        """
         query = [(term_id, self.tfidf(term_id, 1)) for term_id in query]
         norm = l2_norm([tfidf for _, tfidf in query])
         query = [(term_id, tf_idf/norm) for term_id, tf_idf in query]
@@ -168,26 +264,53 @@ class QueryProcessor():
 
 
     # interfaces to communicate with inverted_index
-    # get idf for a term
     def get_idf(self, term):
+        """Get idf for a term
+        Parameters
+        ----------
+        term_id :   int
+                    id of term to get idf for
+        """
         return self.inverted_index.idf(term)
 
-    # get id of a term
     def get_term_id(self, term):
+        """Get id of a term
+        Parameters
+        ----------
+        term :  str
+                Term to get id for"""
         return self.inverted_index.get_term_id(term)
 
-    # get document ids term_id appears in
     def get_postings_list(self, term_id):
+        """Get document ids term_id appears in.
+        Parameters
+        ----------
+        term_id :   id of term to get postings list for"""
         return self.inverted_index.get_postings_list(term_id)
 
-    # get name associated with document id
     def get_document_name(self, doc_id):
+        """Get name associated with document id.
+        Parameters
+        ----------
+        doc_id :    int
+                    id of document to get name for"""
         return self.inverted_index.get_document_name(doc_id)
 
-    # get term ids and tf-idf scores of terms in a document
     def get_document(self, doc_id):
+        """Get term ids and tf-idf scores of terms in a document
+        Parameters
+        ----------
+        doc_id :    int
+                    id of document to get doc ids and associated scores for
+        """
         return self.inverted_index.get_document(doc_id)
 
-    # calculate tf-idf from term id and frequency
     def tfidf(self, term_id, frequency):
+        """Calculate tf-idf.
+        Parameters
+        ----------
+        term_id :   int
+                    id of term
+        frequency : int
+                    Frequency of term"""
         return self.inverted_index.tfidf(term_id, frequency)

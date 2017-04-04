@@ -2,9 +2,11 @@
 import os
 import argparse
 
-def Parser(base_directory):
+def parser():
+    """Parses arguments from comman line using argparse.
+    Parameters"""
     # default directory for reddit files
-    default_directory = os.path.join(base_directory, "data")
+    default_directory = os.path.join(os.cwd(), "data")
 
     parser = argparse.ArgumentParser()
     # obligatory
