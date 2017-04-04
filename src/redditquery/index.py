@@ -80,7 +80,7 @@ class InvertedIndex:
 
 
     def transform_to_tfidf(self):
-    """Turn frequency counts in index into pmi values."""
+        """Turn frequency counts in index into pmi values."""
         self.prepare_updates()
         updates = list()
         for i, document_id in enumerate(self.document_ids):
