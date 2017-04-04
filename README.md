@@ -30,7 +30,7 @@ If the index is build, you will be required to specify the range of months to bu
 
 ```
 -f --first: first month to be downloaded as YYYY/MM
--l --last: last month to be downloaded as YYYY/MM
+-l --last:  last month to be downloaded as YYYY/MM
 ```
 
 All other parameters are optional, here is what they do and their defaults:
@@ -50,7 +50,7 @@ All other parameters are optional, here is what they do and their defaults:
 Build inverted index from reddit comments between december 2005 and march 2006 from the command line:
 
 ```
-user@host:~ redditQuery 1
+user@host:~ redditQuery 1 -f 2005/12 -l 2006/03
 ```
 
 Query inverted index that already exists in myDirectory with queries from myQueries.txt in the same directory:
