@@ -61,7 +61,7 @@ user@host:~ redditQuery 2 -d path/to/myDirectory path/to/myDirectory/myQueries.t
 
 Build and query the same index as above in one go from inside python:
 
-```
+```python
 >>> import os
 >>> import sys
 >>> import pickle
