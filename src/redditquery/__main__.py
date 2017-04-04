@@ -10,8 +10,8 @@ from redditquery.reddit import RedditDownloader, DocumentGenerator
 
 def main():
     """Build and/or Query Inverted Index from reddit comments."""
-    parser = parser()
-    args = parser.parse_args()
+    parse = parser()
+    args = parse.parse_args()
 
     if args.mode in (1,3):
 
