@@ -19,7 +19,7 @@ from redditQuery.reddit import RedditDownloader, DocumentGenerator
 # -l or --last YYYY/MM:  last month to be processed
 
 # optional parameters with defaults:
-# -d or --dir:      directory path to store data in (defaults to ./data)
+# -d or --dir:      directory path to store data in (defaults to working dir)
 # -c or --cores:    number of cores to use for downloading/decompressing monthly data (defaults to single-core)
 # -m or --minfreq:  minimum frequeny to keep terms in index (defaults to 5)
 # -n or --num:      number of results to show for each query (defaults to 10)
@@ -28,7 +28,7 @@ from redditQuery.reddit import RedditDownloader, DocumentGenerator
 
 def main():
     # parse arguments from shell
-    parser = Parser(base_directory = os.path.dirname(__file__))
+    parser = Parser(base_directory = os.getcwd())
     args = parser.parse_args()
 
     if args.mode in (1,3):
