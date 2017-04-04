@@ -29,7 +29,7 @@ def parser():
     """Parses arguments from comman line using argparse.
     Parameters"""
     # default directory for reddit files
-    default_directory = os.path.join(os.cwd(), "data")
+    default_directory = os.path.join(os.getcwd(), "data")
 
     parser = argparse.ArgumentParser(description = description)
     # obligatory
