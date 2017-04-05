@@ -23,60 +23,51 @@ class InvertedIndex:
         self.num_documents = 0
         self.database = database
         self.vocabulary_indices = Numberer()
-        self.document_frequencies = Counter()
         self.document_ids = dict()
 
-        infrequent = self.make_indices(documents = documents, frequency_threshold = frequency_threshold)
-        self.remove_infrequent(infrequent)
+        self.make_indices(documents = documents)
+        self.remove_infrequent(frequency_threshold)
         self.transform_to_tfidf()
 
-    def make_indices(self, documents, frequency_threshold):
+
+    def make_indices(self, documents):
         """Insert documents into index.
         Parameters
         ----------
-        documents :             iterable of tuples of int, list of strings
-                                Documents to insert into index
-        frequency_threshold :   int
-                                Minimum frequency for terms to be in index
-
+        documents : iterable of tuples of int, list of strings
+                    Documents to insert into index
         """
-        vocabulary = Counter()
         self.prepare_inserts()
         for document in documents:
-            self.process_document(document, vocabulary)
-        infrequent = [term_id for term_id, freq in vocabulary.items() if freq < frequency_threshold]
-        return infrequent
+            self.process_document(document)
 
 
-    def process_document(self, document, vocabulary):
+    def process_document(self, document):
         """Add document to index.
         Parameters
         ----------
         document :      tuple of int, list of strings
-                        Document to be processed.
-        vocabulary :    Counter
-                        Vocabulary counter to filter out words at the end
+                        Document to be processed
         """
         doc_id = document[0]
-        document = [self.vocabulary_indices.get(term) for term in document[1]]
-        term_counts = Counter(document)
-        vocabulary += term_counts
-        for term in term_counts:
-            self.document_frequencies[term] += 1
+        terms = [self.vocabulary_indices.get(term) for term in document[1]]
+        term_counts = Counter(terms)
         self.insert_document(self.num_documents, list(term_counts.items()))
         self.document_ids[self.num_documents] = doc_id
         self.num_documents += 1
 
-    def remove_infrequent(self, infrequent):
+
+    def remove_infrequent(self, frequency_threshold):
         """Remove infrequent terms from index.
         Parameters
         ----------
-        infrequent :    list of int
-                        ids of terms to be removed
+        frequency_threshold :   int
+                                frequency below which ids will be selected
         """
+        infrequent = self.get_infrequent(frequency_threshold)
         self.prepare_deletes()
-        self.remove_terms([(term,) for term in infrequent])
-        self.vocabulary_indices.remove_values(set(infrequent))
+        self.remove_terms(infrequent)
+        self.vocabulary_indices.remove_values(set([term[0] for term in infrequent]))
 
 
     def transform_to_tfidf(self):
@@ -89,11 +80,13 @@ class InvertedIndex:
             norm = l2_norm([tfidf for _, tfidf in tfidfs])
             normed = [(tfidf/norm, document_id, term_id) for term_id, tfidf in tfidfs]
             updates += normed
+            #update database every 10000 documents
             if i%10000 == 0:
                 self.update_documents(updates)
                 updates = list()
         if updates:
             self.update_documents(updates)
+
 
     def tfidf(self, term_id, frequency):
         """Calculate tf-idf.
@@ -105,6 +98,7 @@ class InvertedIndex:
                     Frequency of term"""
         return frequency * self.idf(term_id)
 
+
     def idf(self, term_id):
         """Calculate idf.
         Parameters
@@ -112,8 +106,9 @@ class InvertedIndex:
         term_id :   int
                     id of term
         """
-        idf = log2(self.num_documents / max(self.document_frequencies[term_id],1))
+        idf = log2(self.num_documents / max(self.get_document_frequency(term_id),1))
         return idf
+
 
     def get_document_name(self, doc_id):
         """get document name associated with doc id.
@@ -123,6 +118,7 @@ class InvertedIndex:
                     id of document
         """
         return self.document_ids[doc_id]
+
 
     def get_term_id(self, term):
         """Return term_id for given term.
@@ -143,6 +139,17 @@ class InvertedIndex:
                     id of term
         """
         return self.database.retrieve_term(term_id)
+
+
+    def get_infrequent(self, frequency_threshold):
+        """Get ids for term with a total frequency lower than threshold.
+        Parameters
+        ----------
+        frequency_threshold :   int
+                                frequency below which ids will be selected
+        """
+        return self.database.get_infrequent(frequency_threshold)
+
 
     def get_document(self, document_id):
         """Retrieve document from database by id.
@@ -183,6 +190,15 @@ class InvertedIndex:
         """
         self.database.update_documents(updates)
 
+    def get_document_frequency(self, term_id):
+        """Get number of documents term id appears in.
+        Parameters
+        ----------
+        term_id :   int
+                    id of term to get number of containing documents for
+        """
+        return self.database.get_document_frequency(term_id)
+
     def prepare_inserts(self):
         """Prepare database for insertions"""
         self.database.prepare_inserts()
@@ -206,6 +222,7 @@ class QueryProcessor():
 
     def __init__(self, inverted_index):
         self.inverted_index = inverted_index
+
 
     def query_index(self, query, num_results):
         """Query the index.
@@ -234,6 +251,7 @@ class QueryProcessor():
             doc_name = self.get_document_name(doc_id)
             sys.stdout.write("{0} ({1:3f}): {2}".format(doc_id, similarity, doc_name))
 
+
     def get_similarity(self, candidate, query):
         """Return cosine similarity between candidate and query
         Parameters
@@ -249,6 +267,7 @@ class QueryProcessor():
         for term_id, tf_idf in query:
             cosine += tf_idf * candidate.setdefault(term_id, 0)
         return cosine
+
 
     def query_to_tfidf(self, query):
         """Turn query into vector of normed tf-ids scores

@@ -35,6 +35,7 @@ class DataBase:
                 ''')
             self.connection.commit()
 
+
     def insert_document(self, document_id, term_scores):
         """Insert document with its corresponding terms/scores
                     into index table.
@@ -51,6 +52,7 @@ class DataBase:
             VALUES({},?,?)
             '''.format(document_id),list(term_scores))
 
+
     def retrieve_term(self, term_id):
         """Retrieve postings list for term
         Parameters
@@ -64,6 +66,7 @@ class DataBase:
             WHERE term_id == ?
             ''',(term_id,)).fetchall()
         return [document_id[0] for document_id in document_ids]
+
 
     def retrieve_document(self, document_id):
         """Retrieve terms and scores for a document from index table.
@@ -79,6 +82,7 @@ class DataBase:
             ''',(document_id,)).fetchall()
         return terms_scores
 
+
     def remove_terms(self, term_ids):
         """Remove list of terms from index table
         Parameters
@@ -92,6 +96,7 @@ class DataBase:
             WHERE term_id == ?
             ''', term_ids)
         self.connection.commit()
+
 
     def update_documents(self, score_tuples):
         """Change term scores of a given document
@@ -108,6 +113,39 @@ class DataBase:
             ''', score_tuples)
         self.connection.commit()
 
+
+    def get_document_frequency(self, term_id):
+        """Get number of documents term id appears in.
+        Parameters
+        ----------
+        term_id :   int
+                    id of term to get number of containing documents for
+        """
+        documents = self.cursor.execute(
+            '''
+            SELECT document_id FROM doc_term_table
+            WHERE term_id == ?
+            ''',(term_id,)).fetchall()
+        return len(documents)
+
+    def get_infrequent(self, frequency_threshold):
+        """Get ids for term with a total frequency lower than threshold.
+        Parameters
+        ----------
+        frequency_threshold :   int
+                                frequency below which ids will be selected
+        """
+        infrequent = self.cursor.execute(
+            '''
+            SELECT term_id FROM
+            (SELECT term_id, sum(score) AS total
+            FROM doc_term_table
+            GROUP BY term_id)
+            WHERE total >= ?
+            ''',(frequency_threshold,)).fetchall()
+        return infrequent
+
+
     def create_index(self, column_name):
         """Create index over column.
         Parameters
@@ -120,12 +158,14 @@ class DataBase:
             """.format(column_name))
         self.connection.commit()
 
+
     def create_covering_index(self):
         """Create composite index on document_id and term_id"""
         self.cursor.execute("""
             CREATE INDEX covering_index ON doc_term_table (document_id, term_id)
             """)
         self.connection.commit()
+
 
     def prepare_inserts(self):
         """start transaction for fast inserts"""
