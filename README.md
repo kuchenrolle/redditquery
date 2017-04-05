@@ -5,10 +5,10 @@ An offline information retrieval system for full-text search on reddit comments.
 
 ## Getting Started
 
-To get started, install the dependencies (see Prerequisites) and then clone the repository to your local machine. Once set-up, you can call the package from the command line like so (see Parameters):
+Once redditquery is set-up on your system (see Installation and Prerequisites), you can call the package from the command line like so (see Parameters):
 
-```
-redditquery [-h] [-f FIRST] [-l LAST] [--dir [DIR]] [--num [NUM]]
+```shell
+user@host:~ redditquery [-h] [-f FIRST] [-l LAST] [--dir [DIR]] [--num [NUM]]
                    [--cores [CORES]] [--minfreq [MINFREQ]] [--progress]
                    mode
 ```
@@ -49,13 +49,13 @@ All other parameters are optional, here is what they do and their defaults:
 
 Build inverted index from reddit comments between december 2005 and march 2006 from the command line:
 
-```
+```shell
 user@host:~ redditquery 1 -f 2005/12 -l 2006/03
 ```
 
 Query inverted index that already exists in myDirectory with queries from myQueries.txt in the same directory:
 
-```
+```shell
 user@host:~ redditquery 2 -d path/to/myDirectory path/to/myDirectory/myQueries.txt
 ```
 
@@ -92,26 +92,26 @@ Build and query the same index as above in one go from inside python:
 
 ### Prerequisites
 
-redditquery has two dependencies that are not part of the standard distribution, Pandas and Spacy. If you install this package using pip, the dependencies should be installed automatically. On Unix systems, you should also be able to install them separately using pip3:
+redditquery has two dependencies that are not part of the standard distribution, Pandas and Spacy. If you install this package using pip, the dependencies should be installed automatically. On Unix systems, you should also be able to install them separately using pip:
 
-```
-pip3 install pandas
-pip3 install spacy
+```shell
+user@host:~ pip install pandas
+user@host:~ pip install spacy
 ```
 
-An alternative, especially for Windows users, is to use a conda distribution that should come shipped with pandas and add spacy like so and then install, still using pip3:
+An alternative, especially for Windows users, is to use a conda distribution that should come shipped with pandas and add spacy like so and then install, still using pip:
 
-```
-source activate <your_virtual_environment_name>
-conda install spacy
-pip3 install redditquery
+```shell
+user@host:~ [source] activate <environment>
+(environment)user@host:~ conda install spacy
+(environment)user@host:~ pip install redditquery
 ```
 
 Lastly, you can clone the repository and use the setup.py to install the package manually:
 
-```
-git clone git@github.com:kuchenrolle/redditquery.git
-python setup.py install
+```shell
+user@host:~ git clone https://github.com/kuchenrolle/redditquery.git
+user@host:~ python setup.py install
 ```
 
 
@@ -122,15 +122,16 @@ If you encounter any problems installing the dependencies, please consult the in
 
 This package is pip-installable:
 
-```
-pip3 install redditquery
+```shell
+user@host:~ pip install redditquery
 ```
 
-If you're using conda, then first activate the target environment as above and then install. Alternatively, clone this repository to your local directory and install manually:
+If you're using conda, then first activate the target environment and then install. Alternatively, clone this repository to your local directory and install manually:
 
-```
-git clone git@github.com:kuchenrolle/redditquery.git <path_to_destination_folder>
-python setup.py install
+```shell
+user@host:~ git clone git@github.com:kuchenrolle/redditquery.git <path_to_destination_folder>
+user@host:~ [source] activate <environment>
+(environment)user@host:~ python setup.py install
 ```
 
 
