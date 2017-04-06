@@ -21,7 +21,7 @@ class RedditDownloader():
     ----------
     start :             str
                         First month to be processed as YYYY/MM
-    last :              str
+    end :               str
                         Last month to be processed as YYYY/MM
     directory :         str
                         Directory to store data in
@@ -31,11 +31,11 @@ class RedditDownloader():
                         Keep compressed archive files
     """
 
-    def __init__(self, start, last, directory, report_progress, keep_compressed):
+    def __init__(self, start, end, directory, report_progress, keep_compressed):
         self.directory = check_directory(directory)
         self.report_progress = report_progress
         self.keep_compressed = keep_compressed
-        self.months = period_range(start, last, freq = "M")
+        self.months = period_range(start, end, freq = "M")
 
 
     def decompress(self, compressed_path, decompressed_path):
@@ -139,7 +139,7 @@ class RedditDownloader():
                     pass
 
 
-def DocumentGenerator(directory, lemmatize = False):
+def DocumentGenerator(directory, fulltext, lemmatize):
     """
     Takes a directory with reddit comment archive files (JSON)
     and returns tuples of the comment id and a list of tokens for each comment.
@@ -147,12 +147,16 @@ def DocumentGenerator(directory, lemmatize = False):
     ----------
     directory : str or path object
                 Directory with comment files
-    lemmatize : Boolean, optional
+    fulltext :  Boolean
+                return full comment as well
+    lemmatize : Boolean
                 lemmatize tokens in comments
     """
     files = recursive_walk(directory)
     nlp = spacy.load("en")
     for month in files:
+        if not month.endswith("json"):
+            continue
         month = open(month, "r")
         for comment in month:
             comment = json.loads(comment)
@@ -160,7 +164,9 @@ def DocumentGenerator(directory, lemmatize = False):
             comment_id = comment["id"]
             tokens = nlp(text)
             if lemmatize:
-                tokens = [token.lemma_.lower() for token in tokens if not token.pos_.startswith(u"PU")] # filter punctuation
+                tokens = [token.lemma_.strip().lower() for token in tokens if not token.pos_.startswith(u"PU")] # filter punctuation
             else:
-                tokens = [token.string.lower() for token in tokens if not token.pos_.startswith(u"PU")]
-            yield comment_id, tokens
+                tokens = [token.string.strip().lower() for token in tokens if not token.pos_.startswith(u"PU")]
+            if not fulltext:
+                text = ""
+            yield comment_id, tokens, text

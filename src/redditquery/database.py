@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import os
-import sqlite3 as lite
+import sqlite3
 from itertools import repeat
 
 class DataBase:
@@ -18,7 +18,7 @@ class DataBase:
         db_exists = os.path.isfile(database_file)
         if db_exists and not existing:
             raise FileExistsError("Database file already exists!")
-        self.connection = lite.connect(database = database_file, isolation_level = None)
+        self.connection = sqlite3.connect(database = database_file, isolation_level = None)
         self.cursor = self.connection.cursor()
         self.cursor.execute("PRAGMA journal_mode=OFF")
         self.cursor.execute("PRAGMA synchronous=OFF")
@@ -33,19 +33,38 @@ class DataBase:
                 score REAL
                 )
                 ''')
+            self.cursor.execute(
+                '''
+                CREATE TABLE document_table(
+                document_id INTEGER,
+                document_name NVARCHAR,
+                fulltext NVARCHAR
+                )
+                ''')
             self.connection.commit()
+        else:
+            assert(self.table_exists("doc_term_table"))
+            assert(self.table_exists("document_table"))
 
 
-    def insert_document(self, document_id, term_scores):
-        """Insert document with its corresponding terms/scores
-                    into index table.
+    def insert_document(self, document_id, document_name, term_scores, fulltext):
+        """Insert document into database table(s).
         Parameters
         ----------
         document_id :   int
                         id of the document
+        document_name : str
+                        Name of the document
         term_scores :   iterable of tuples of int, float
-                        term ids and term scores
+                        Term ids and term scores
+        fulltext :      json
+                        json serialized string of document's text
         """
+        self.cursor.execute(
+            '''
+            INSERT INTO document_table
+            VALUES(?,?,?)
+            ''',(document_id, document_name, fulltext))
         self.cursor.executemany(
             '''
             INSERT INTO doc_term_table
@@ -81,6 +100,21 @@ class DataBase:
             WHERE document_id == ?
             ''',(document_id,)).fetchall()
         return terms_scores
+
+
+    def get_fulltext(self, document_id):
+        """Retrieve text of a document by its id.
+        Parameters
+        ----------
+        document_id :   int
+                        id of document
+        """
+        fulltext = self.cursor.execute(
+            '''
+            SELECT fulltext FROM document_table
+            WHERE document_id == ?
+            ''',(document_id,)).fetchone()
+        return fulltext[0]
 
 
     def remove_terms(self, term_ids):
@@ -128,6 +162,22 @@ class DataBase:
             ''',(term_id,)).fetchall()
         return len(documents)
 
+
+    def get_document_name(self, document_id):
+        """Get name associated with document id.
+        Parameters
+        ----------
+        doc_id :    int
+                    id of document to get name for
+        """
+        document_name = self.cursor.execute(
+            '''
+            SELECT document_name FROM document_table
+            WHERE document_id == ?
+            ''', (document_id,)).fetchone()
+        return document_name[0]
+
+
     def get_infrequent(self, frequency_threshold):
         """Get ids for term with a total frequency lower than threshold.
         Parameters
@@ -141,7 +191,7 @@ class DataBase:
             (SELECT term_id, sum(score) AS total
             FROM doc_term_table
             GROUP BY term_id)
-            WHERE total >= ?
+            WHERE total <= ?
             ''',(frequency_threshold,)).fetchall()
         return infrequent
 
@@ -167,6 +217,19 @@ class DataBase:
         self.connection.commit()
 
 
+    def table_exists(self, table):
+        """Check whether table exists.
+        Parameters
+        ----------
+        table : str
+                Name of the table
+        """
+        exists = self.cursor.execute("""
+            SELECT name FROM sqlite_master WHERE type='table' AND name='{}'
+            """.format(table)).fetchone()
+        return exists is not None
+
+
     def prepare_inserts(self):
         """start transaction for fast inserts"""
         self.cursor.execute("BEGIN")
@@ -177,6 +240,14 @@ class DataBase:
         self.create_index("term_id")
 
     def prepare_updates(self):
-        """create index on document_id and covering index for fast updates"""
+        """create index on document id and covering index for fast updates"""
         self.create_index("document_id")
         self.create_covering_index()
+
+    def prepare_searches(self):
+        """Vacuum and create index on fulltext table."""
+        self.cursor.execute('''
+            CREATE INDEX document_index ON document_table (document_id)
+            ''')
+        self.connection.execute('VACUUM')
+        self.connection.commit()

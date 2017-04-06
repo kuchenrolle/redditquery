@@ -2,13 +2,26 @@
 import io
 import re
 from glob import glob
+from os import system
 from os.path import basename
 from os.path import dirname
 from os.path import join
 from os.path import splitext
 
 from setuptools import find_packages
-from setuptools import setup
+from setuptools import setup, Command
+
+
+# taken from http://stackoverflow.com/a/3780822
+class CleanCommand(Command):
+    """Custom clean command to tidy up the project root."""
+    user_options = []
+    def initialize_options(self):
+        pass
+    def finalize_options(self):
+        pass
+    def run(self):
+        system('rm -vrf ./build ./dist ./*.pyc ./*.tgz ./src/*.egg-info')
 
 
 setup(
@@ -65,5 +78,8 @@ setup(
         'console_scripts': [
             'redditquery = redditquery.__main__:main',
         ]
+    },
+    cmdclass={
+        'clean': CleanCommand,
     },
 )

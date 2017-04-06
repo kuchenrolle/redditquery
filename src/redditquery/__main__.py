@@ -16,15 +16,15 @@ def main():
     if args.mode in (1,3):
 
         # check that conditionally obligatory arguments have been put in:
-        if not args.first or not args.last:
+        if not args.start or not args.end:
             raise ValueError("first and last month must be specified when building index.")
 
         # download data and decompress
-        downloader = RedditDownloader(start = args.first, last = args.last, directory = os.path.join(args.dir, "monthly_data"), report_progress = args.progress, keep_compressed = False)
+        downloader = RedditDownloader(start = args.start, end = args.end, directory = os.path.join(args.dir, "monthly_data"), report_progress = args.progress, keep_compressed = False)
         downloader.process_all_parallel(num_cores = args.cores)
 
         # make document generator
-        documents = DocumentGenerator(directory = os.path.join(args.dir, "monthly_data"))
+        documents = DocumentGenerator(directory = os.path.join(args.dir, "monthly_data"), fulltext = args.fulltext, lemmatize = args.lemma)
 
         # make inverted index
         database = DataBase(database_file = os.path.join(args.dir,"database.sql"))
@@ -49,11 +49,11 @@ def main():
 
     if args.mode in (2,3):
         # set-up query processor
-        processor = QueryProcessor(inverted_index = inverted_index)
-    
+        processor = QueryProcessor(inverted_index = inverted_index, lemmatize = args.lemma)
+
         # process queries
         for query in sys.stdin:
-            processor.query_index(query, num_results = args.num)
+            processor.query_index(query, num_results = args.num, fulltext = args.fulltext)
 
 
 if __name__ == "__main__":

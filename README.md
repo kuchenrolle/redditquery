@@ -8,9 +8,10 @@ An offline information retrieval system for full-text search on reddit comments.
 Once redditquery is set-up on your system (see Installation and Prerequisites), you can call the package from the command line like so (see Parameters):
 
 ```shell
-user@host:~ redditquery [-h] [-f FIRST] [-l LAST] [--dir [DIR]] [--num [NUM]]
-                   [--cores [CORES]] [--minfreq [MINFREQ]] [--progress]
-                   mode
+user@host:~ redditquery mode [-h] [-s [START]] [-e [END]] [-d [DIR]] [-n [NUM]]
+                   [-c [CORES]] [-m [MINFREQ]] [-p [PROGRESS]] [-f [FULLTEXT]]
+                   [-l [LEMMA]]
+                   
 ```
 
 Alterantively, you can use it from inside python to interact with it dynamically (see Examples).
@@ -29,8 +30,8 @@ mode:  1 Build Inverted Index (requires specifying -f and -l)
 If the index is build, you will be required to specify the range of months to build the index on, by specifying the first and last month to be processed:
 
 ```
--f --first: first month to be downloaded as YYYY/MM
--l --last:  last month to be downloaded as YYYY/MM
+-s --start: first month to be downloaded as YYYY/MM
+-e --end:   last month to be downloaded as YYYY/MM
 ```
 
 All other parameters are optional, here is what they do and their defaults:
@@ -40,6 +41,8 @@ All other parameters are optional, here is what they do and their defaults:
 -c or --cores:    number of cores to use for downloading/decompressing monthly data (defaults to single-core)
 -m or --minfreq:  minimum frequeny to keep terms in index (defaults to 5)
 -n or --num:      number of results to show for each query (defaults to 10)
+-f or --fulltext: store/retrieve full text of reddit comments (defaults to only storing/retrieving comment ids)
+-l or --lemma:    lemmatize documents/queries
 -p or --progress: output progress information for download/processing (only single core, defaults to no progress shown)
 - h or --help:    show help file
 ```
@@ -50,7 +53,7 @@ All other parameters are optional, here is what they do and their defaults:
 Build inverted index from reddit comments between december 2005 and march 2006 from the command line:
 
 ```shell
-user@host:~ redditquery 1 -f 2005/12 -l 2006/03
+user@host:~ redditquery 1 -s 2005/12 -e 2006/03
 ```
 
 Query inverted index that already exists in myDirectory with queries from myQueries.txt in the same directory:
@@ -72,22 +75,22 @@ Build and query the same index as above in one go from inside python:
 
 >>> directory = "myDirectory"
 >>> queries = "myDirectory/myQueries.txt"
->>> first = "2005/12"
->>> last = "2006/03"
+>>> start = "2005/12"
+>>> end = "2006/03"
 >>> minimum_freq = 5
 >>> num_results = 10
 >>> 
->>> downloader = RedditDownloader(start = start, end = last, directory = directory, keep_compressed = False)
+>>> downloader = RedditDownloader(start = start, end = end, directory = directory, keep_compressed = False)
 >>> downloader.process_all_parallel()
 >>> 
->>> documents = DocumentGenerator(directory = os.path.join(directory, "monthly_data"))
+>>> documents = DocumentGenerator(directory = os.path.join(directory, "monthly_data"), fulltext = False, lemmatize = False)
 >>> database = DataBase(database_file = os.path.join(directory,"database.sql"))
 >>> inverted_index = InvertedIndex(documents = documents, database = database, frequency_threshold = minimum_freq)
 >>> 
->>> processor = QueryProcessor(inverted_index = inverted_index)
+>>> processor = QueryProcessor(inverted_index = inverted_index, lemmatize = False)
 >>> with open(queries, "r") as queries:
 >>>     for query in queries:
->>>     processor.query_index(query.strip(), num_results = num_results)
+>>>     processor.query_index(query.strip(), num_results = num_results, fulltext = False)
 ```
 
 ### Prerequisites
