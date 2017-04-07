@@ -38,6 +38,7 @@ class Numberer:
         ----------
         values :    iterable of int
                     values to be removed"""
+        values = set(values)
         for key in list(self.known.keys()):
             if self.known[key] in values:
                 del self.known[key]

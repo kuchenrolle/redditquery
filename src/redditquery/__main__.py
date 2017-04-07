@@ -53,7 +53,7 @@ def main():
 
         # process queries
         for query in sys.stdin:
-            processor.query_index(query, num_results = args.num, fulltext = args.fulltext)
+            processor.query_index(query.strip(), num_results = args.num, fulltext = args.fulltext, conjunctive = args.all)
 
 
 if __name__ == "__main__":

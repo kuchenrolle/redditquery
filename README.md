@@ -10,7 +10,7 @@ Once redditquery is set-up on your system (see Installation and Prerequisites), 
 ```shell
 user@host:~ redditquery mode [-h] [-s [START]] [-e [END]] [-d [DIR]] [-n [NUM]]
                    [-c [CORES]] [-m [MINFREQ]] [-p [PROGRESS]] [-f [FULLTEXT]]
-                   [-l [LEMMA]]
+                   [-l [LEMMA]] [-a [ALL]]
                    
 ```
 
@@ -42,6 +42,7 @@ All other parameters are optional, here is what they do and their defaults:
 -m or --minfreq:  minimum frequeny to keep terms in index (defaults to 5)
 -n or --num:      number of results to show for each query (defaults to 10)
 -f or --fulltext: store/retrieve full text of reddit comments (defaults to only storing/retrieving comment ids)
+-a or --all:      return documents containing all query terms (defaults to documents containing any of the query terms)
 -l or --lemma:    lemmatize documents/queries
 -p or --progress: output progress information for download/processing (only single core, defaults to no progress shown)
 - h or --help:    show help file
@@ -90,7 +91,7 @@ Build and query the same index as above in one go from inside python:
 >>> processor = QueryProcessor(inverted_index = inverted_index, lemmatize = False)
 >>> with open(queries, "r") as queries:
 >>>     for query in queries:
->>>     processor.query_index(query.strip(), num_results = num_results, fulltext = False)
+>>>     processor.query_index(query.strip(), num_results = num_results, fulltext = False, conjunctive = False)
 ```
 
 ### Prerequisites

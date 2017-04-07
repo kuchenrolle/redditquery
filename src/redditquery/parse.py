@@ -19,6 +19,7 @@ def parser():
     parser.add_argument("--dir", "-d", type = str, nargs = "?", default = default_directory, help = "directory for data storage")
     parser.add_argument("--num", "-n", type = int, nargs = "?", default = 10, help = "number of results per query")
     parser.add_argument("--fulltext", "-f", action = "store_true", help = "store fulltext and/or return in queries")
+    parser.add_argument("--all", "-a", action = "store_true", help = "Return documents containing all rather than any of the query terms")
     parser.add_argument("--minfreq", "-m", type = int, nargs = "?", default = 5, help = "minimum term frequency")
     parser.add_argument("--lemma", "-l", action = "store_true", help = "lemmatize comments/queries")
     parser.add_argument("--cores", "-c", type = int, nargs = "?", default = 1, help = "number of cores to use")

@@ -3,6 +3,7 @@ import sys
 import spacy
 from math import log2
 from heapq import nlargest
+from functools import partial
 from collections import Counter
 from redditquery.utils import Numberer, l2_norm
 
@@ -62,12 +63,12 @@ class InvertedIndex:
         Parameters
         ----------
         frequency_threshold :   int
-                                frequency below which ids will be selected
+                                frequency below which terms will be removed
         """
         infrequent = self.get_infrequent(frequency_threshold)
         self.prepare_deletes()
         self.remove_terms(infrequent)
-        self.vocabulary_indices.remove_values(set([term[0] for term in infrequent]))
+        self.vocabulary_indices.remove_values([term[0] for term in infrequent])
 
 
     def transform_to_tfidf(self):
@@ -84,6 +85,7 @@ class InvertedIndex:
             if doc_id%10000 == 0:
                 self.update_documents(updates)
                 updates = list()
+        # update remaining documents
         if updates:
             self.update_documents(updates)
 
@@ -170,8 +172,8 @@ class InvertedIndex:
                         Name of the document
         term_scores :   iterable of tuples of int, float
                         Term ids and term scores
-        fulltext :      json
-                        json serialized string of document's text
+        fulltext :      str
+                        string of document's text
         """
         self.database.insert_document(document_id, document_name, term_scores, fulltext)
 
@@ -244,7 +246,7 @@ class QueryProcessor():
         self.nlp = spacy.load("en")
 
 
-    def query_index(self, query, num_results, fulltext):
+    def query_index(self, query, num_results, fulltext, conjunctive):
         """Query the index.
         Parameters
         ----------
@@ -254,8 +256,10 @@ class QueryProcessor():
                         Number of most similar results to return
         fulltext :      Boolean
                         Return documents' full text as results
+        conjunctive :   Boolean
+                        Return documents containing all rather than any of the query terms
         """
-        tokens = self.nlp(query.strip())
+        tokens = self.nlp(query)
         if self.lemmatize:
             query = [token.lemma_.strip().lower() for token in tokens if not token.pos_.startswith(u"PU")] # filter punctuation
         else:
@@ -268,36 +272,42 @@ class QueryProcessor():
         candidates = set()
         for term_id in term_ids:
             doc_ids = self.get_postings_list(term_id)
-            candidates.update(doc_ids)
+            if 'candidates' not in locals():
+                candidates = set(doc_ids)
+            elif conjunctive:
+                candidates.intersection_update(doc_ids)
+            else:
+                candidates.update(doc_ids)
         # get similarity between documents and query
-        similarities = list()
-        for candidate in candidates:
-            similarities.append((self.get_similarity(candidate, term_ids), candidate))
+        query_tfidfs = self.query_to_tfidf(term_ids)
+        get_similarity = partial(self.get_similarity, query_tfidfs = query_tfidfs)
+        similarities = map(get_similarity, candidates)
         for i, term in enumerate(query):
-            sys.stdout.write("idf({0}): {1:2f}\n".format(term, self.get_idf(term_ids[i])))
+            term_idf = self.get_idf(term_ids[i])
+            sys.stdout.write("idf({0}): {1:2f}\n".format(term, term_idf))
         for similarity, doc_id in nlargest(num_results, similarities):
             doc_name = self.get_document_name(doc_id)
             sys.stdout.write("{0} ({1:3f}): {2}\n".format(doc_id, similarity, doc_name))
             if fulltext:
                 text = self.get_fulltext(doc_id)
                 sys.stdout.write(text.strip()+"\n\n")
+        sys.stdout.write("\n")
 
 
-    def get_similarity(self, candidate, query):
-        """Return cosine similarity between candidate and query
+    def get_similarity(self, candidate, query_tfidfs):
+        """Calculate cosine similarity between candidate and query.
         Parameters
         ----------
-        candidate : int
-                    id of candidate document
-        query :     iterable of int
-                    ids of terms in the query
+        candidate :     int
+                        id of candidate document
+        query_tfidfs :  iterable of tuples of int, float
+                        ids and tfidfs of terms in the query
         """
-        query = self.query_to_tfidf(query)
-        candidate = dict(self.get_document(candidate))
+        candidate_tfidfs = dict(self.get_document(candidate))
         cosine = 0
-        for term_id, tf_idf in query:
-            cosine += tf_idf * candidate.setdefault(term_id, 0)
-        return cosine
+        for term_id, tf_idf in query_tfidfs:
+            cosine += tf_idf * candidate_tfidfs.setdefault(term_id, 0)
+        return cosine, candidate
 
 
     def query_to_tfidf(self, query):
@@ -307,10 +317,10 @@ class QueryProcessor():
         query : iterable of int
                 ids of terms in the query
         """
-        query = [(term_id, self.tfidf(term_id, 1)) for term_id in query]
-        norm = l2_norm([tfidf for _, tfidf in query])
-        query = [(term_id, tf_idf/norm) for term_id, tf_idf in query]
-        return query
+        query_tfidfs = [(term_id, self.tfidf(term_id, 1)) for term_id in query]
+        norm = l2_norm([tfidf for _, tfidf in query_tfidfs])
+        query_normed = [(term_id, tf_idf/norm) for term_id, tf_idf in query_tfidfs]
+        return query_normed
 
 
     # interfaces to communicate with inverted_index
@@ -359,8 +369,8 @@ class QueryProcessor():
         """Retrieve text of a document by its id.
         Parameters
         ----------
-        document_id :   int
-                        id of document
+        doc_id :    int
+                    id of document
         """
         return self.inverted_index.get_fulltext(doc_id)
 

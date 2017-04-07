@@ -14,6 +14,7 @@ class DataBase:
                     Connect to existing database instead of creating one
     """
 
+
     def __init__(self, database_file, existing = False):
         db_exists = os.path.isfile(database_file)
         if db_exists and not existing:
@@ -30,16 +31,29 @@ class DataBase:
                 CREATE TABLE doc_term_table(
                 document_id INTEGER,
                 term_id INTEGER,
-                score REAL
+                score REAL,
+                PRIMARY KEY (document_id, term_id)
                 )
                 ''')
             self.cursor.execute(
                 '''
                 CREATE TABLE document_table(
-                document_id INTEGER,
+                document_id INTEGER PRIMARY KEY,
                 document_name NVARCHAR,
                 fulltext NVARCHAR
                 )
+                ''')
+            # auto-delete documents that cannot be queried after term deletion
+            self.cursor.execute(
+                '''
+                CREATE TRIGGER auto_delete AFTER DELETE ON doc_term_table 
+                BEGIN
+                DELETE FROM document_table
+                WHERE document_table.document_id = old.document_id
+                AND NOT EXISTS
+                (SELECT 1 FROM doc_term_table AS s
+                WHERE s.document_id = old.document_id);
+                END;
                 ''')
             self.connection.commit()
         else:
@@ -57,8 +71,8 @@ class DataBase:
                         Name of the document
         term_scores :   iterable of tuples of int, float
                         Term ids and term scores
-        fulltext :      json
-                        json serialized string of document's text
+        fulltext :      str
+                        string of document's text
         """
         self.cursor.execute(
             '''
@@ -240,14 +254,10 @@ class DataBase:
         self.create_index("term_id")
 
     def prepare_updates(self):
-        """create index on document id and covering index for fast updates"""
+        """create index on document id for fast updates"""
         self.create_index("document_id")
-        self.create_covering_index()
 
     def prepare_searches(self):
-        """Vacuum and create index on fulltext table."""
-        self.cursor.execute('''
-            CREATE INDEX document_index ON document_table (document_id)
-            ''')
+        """Vacuum."""
         self.connection.execute('VACUUM')
         self.connection.commit()
