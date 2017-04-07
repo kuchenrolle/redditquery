@@ -3,3 +3,9 @@ include LICENSE.txt
 
 # Include the README
 include README.md
+
+# include setup details
+include setup.cfg
+
+# exclude compiled files
+excluse ./*pyc
