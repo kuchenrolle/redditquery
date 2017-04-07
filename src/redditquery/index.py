@@ -306,7 +306,8 @@ class QueryProcessor():
         candidate_tfidfs = dict(self.get_document(candidate))
         cosine = 0
         for term_id, tf_idf in query_tfidfs:
-            cosine += tf_idf * candidate_tfidfs.setdefault(term_id, 0)
+            if term_id in candidate_tfidfs:
+                cosine += tf_idf * candidate_tfidfs[term_id]
         return cosine, candidate
 
 
