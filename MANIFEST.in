@@ -8,4 +8,4 @@ include README.md
 include setup.cfg
 
 # exclude compiled files
-excluse ./*pyc
+exclude ./*pyc

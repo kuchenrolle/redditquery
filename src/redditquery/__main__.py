@@ -49,7 +49,7 @@ def main():
 
     if args.mode in (2,3):
         # set-up query processor
-        processor = QueryProcessor(inverted_index = inverted_index, lemmatize = args.lemma)
+        processor = QueryProcessor(inverted_index = inverted_index, lemmatize = args.lemma, cores = args.cores)
 
         # process queries
         for query in sys.stdin:

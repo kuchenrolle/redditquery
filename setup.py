@@ -26,7 +26,7 @@ class CleanCommand(Command):
 
 setup(
     name = 'redditquery',
-    version = '0.1.0',
+    version = '0.1.1',
     license = 'MIT',
     description = 'An offline information retrieval system for full-text search on reddit comments.',
     long_description = open('README.md').read(),

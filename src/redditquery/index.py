@@ -5,6 +5,7 @@ from math import log2
 from heapq import nlargest
 from functools import partial
 from collections import Counter
+from multiprocessing import Process, Queue
 from redditquery.utils import Numberer, l2_norm
 
 
@@ -213,6 +214,12 @@ class InvertedIndex:
         """
         return self.database.get_fulltext(doc_id)
 
+    def get_document_retriever(self):
+        """Return a function that retrieves documents by id, using its own
+        connection (for parallel access).
+        """
+        return self.database.get_document_retriever()
+
     def prepare_inserts(self):
         """Prepare database for insertions."""
         self.database.prepare_inserts()
@@ -238,12 +245,15 @@ class QueryProcessor():
                         Index to be queried
     lemmatize :         Boolean
                         Lemmatize queries
+    cores :             Int
+                        Number of cores to use
     """
 
-    def __init__(self, inverted_index, lemmatize):
+    def __init__(self, inverted_index, lemmatize, cores):
         self.inverted_index = inverted_index
-        self.lemmatize = lemmatize
         self.nlp = spacy.load("en")
+        self.lemmatize = lemmatize
+        self.cores = cores
 
 
     def query_index(self, query, num_results, fulltext, conjunctive):
@@ -280,8 +290,28 @@ class QueryProcessor():
                 candidates.update(doc_ids)
         # get similarity between documents and query
         query_tfidfs = self.query_to_tfidf(term_ids)
-        get_similarity = partial(self.get_similarity, query_tfidfs = query_tfidfs)
-        similarities = map(get_similarity, candidates)
+        # hacked parallelization into here
+        if self.cores > 1:
+            candidates = list(candidates)
+            retrievers = [self.get_document_retriever() for _ in range(self.cores)]
+            results = Queue()
+            processes = list()
+            for i in range(self.cores):
+                kwargs = {"candidates":candidates[i::self.cores],
+                        "query_tfidfs":query_tfidfs,
+                        "queue":results,
+                        "retriever":retrievers[i]}
+                p = Process(target=self.get_similarity_parallel, kwargs = kwargs)
+                processes.append(p)
+            for process in processes:
+                process.start()
+            for process in processes:
+                process.join()
+            results.put("STOP")
+            similarities = iter(results.get, "STOP")
+        else:
+            get_similarity = partial(self.get_similarity, query_tfidfs = query_tfidfs)
+            similarities = map(get_similarity, candidates)
         for i, term in enumerate(query):
             term_idf = self.get_idf(term_ids[i])
             sys.stdout.write("idf({0}): {1:2f}\n".format(term, term_idf))
@@ -309,6 +339,15 @@ class QueryProcessor():
             if term_id in candidate_tfidfs:
                 cosine += tf_idf * candidate_tfidfs[term_id]
         return cosine, candidate
+
+    def get_similarity_parallel(self, candidates, query_tfidfs, queue, retriever):
+        for candidate in candidates:
+            candidate_tfidfs = dict(retriever(candidate))
+            cosine = 0
+            for term_id, tf_idf in query_tfidfs:
+                if term_id in candidate_tfidfs:
+                    cosine += tf_idf * candidate_tfidfs[term_id]
+            queue.put((cosine, candidate))
 
 
     def query_to_tfidf(self, query):
@@ -384,3 +423,9 @@ class QueryProcessor():
         frequency : int
                     Frequency of term"""
         return self.inverted_index.tfidf(term_id, frequency)
+
+    def get_document_retriever(self):
+        """Return a function that retrieves documents by id, using its own
+        connection (for parallel access).
+        """
+        return self.inverted_index.get_document_retriever()

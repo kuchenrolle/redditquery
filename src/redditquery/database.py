@@ -116,6 +116,28 @@ class DataBase:
         return terms_scores
 
 
+    def get_document_retriever(self):
+        """Return a function that retrieves documents by id, using its own
+        connection (for parallel access).
+        """
+        db_path = self.cursor.execute("PRAGMA database_list").fetchall()[0][2]
+        cursor = sqlite3.connect(db_path, isolation_level = None).cursor()
+        def retrieve_document(document_id):
+            """Retrieve terms and scores for a document from index table.
+            Parameters
+            ----------
+            document_id :   int
+                            id of document to be retrieved
+            """
+            term_scores = cursor.execute(
+                '''
+                SELECT term_id, score FROM doc_term_table
+                WHERE document_id == ?
+                ''',(document_id,)).fetchall()
+            return term_scores
+        return retrieve_document
+
+
     def get_fulltext(self, document_id):
         """Retrieve text of a document by its id.
         Parameters
